@@ -271,7 +271,7 @@ const TopUp = () => {
                   </Space>
                 </Form>
               </div>
-              <div style="margin-top: 20px;">Tips：点击“获取兑换码”即可充值余额。</div>
+              <div style={{marginTop: 20}}>Tips：点击“获取兑换码”即可充值余额。</div>
               <div style={{display: 'none', marginTop: 20}}>
                 <Divider>在线充值</Divider>
                 <Form>
