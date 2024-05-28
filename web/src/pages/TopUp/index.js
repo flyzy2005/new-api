@@ -233,85 +233,85 @@ const TopUp = () => {
           <div
             style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}
           >
-            <Card style={{width: '500px', padding: '20px'}}>
-              <Title level={3} style={{textAlign: 'center'}}>
+            <Card style={{ width: '500px', padding: '20px' }}>
+              <Title level={3} style={{ textAlign: 'center' }}>
                 余额 {renderQuota(userQuota)}
               </Title>
-              <div style={{marginTop: 20}}>
+              <div style={{ marginTop: 20 }}>
                 <Divider>兑换余额</Divider>
                 <Form>
                   <Form.Input
-                      field={'redemptionCode'}
-                      label={'兑换码'}
-                      placeholder='兑换码'
-                      name='redemptionCode'
-                      value={redemptionCode}
-                      onChange={(value) => {
-                        setRedemptionCode(value);
-                      }}
+                    field={'redemptionCode'}
+                    label={'兑换码'}
+                    placeholder='兑换码'
+                    name='redemptionCode'
+                    value={redemptionCode}
+                    onChange={(value) => {
+                      setRedemptionCode(value);
+                    }}
                   />
                   <Space>
                     {topUpLink ? (
-                        <Button
-                            type={'primary'}
-                            theme={'solid'}
-                            onClick={openTopUpLink}
-                        >
-                          获取兑换码
-                        </Button>
+                      <Button
+                        type={'primary'}
+                        theme={'solid'}
+                        onClick={openTopUpLink}
+                      >
+                        获取兑换码
+                      </Button>
                     ) : null}
                     <Button
-                        type={'warning'}
-                        theme={'solid'}
-                        onClick={topUp}
-                        disabled={isSubmitting}
+                      type={'warning'}
+                      theme={'solid'}
+                      onClick={topUp}
+                      disabled={isSubmitting}
                     >
                       {isSubmitting ? '兑换中...' : '兑换'}
                     </Button>
                   </Space>
                 </Form>
               </div>
-              <div style={{marginTop: 20}}>Tips：点击“获取兑换码”即可充值余额。</div>
-              <div style={{display: 'none', marginTop: 20}}>
+              <div style={{ marginTop: 20 }}>Tips：点击“获取兑换码”即可充值余额。</div>
+              <div style={{ display: 'none', marginTop: 20 }}>
                 <Divider>在线充值</Divider>
                 <Form>
                   <Form.Input
-                      disabled={!enableOnlineTopUp}
-                      field={'redemptionCount'}
-                      label={'实付金额：' + renderAmount()}
-                      placeholder={
-                          '充值数量，最低 ' + renderQuotaWithAmount(minTopUp)
+                    disabled={!enableOnlineTopUp}
+                    field={'redemptionCount'}
+                    label={'实付金额：' + renderAmount()}
+                    placeholder={
+                      '充值数量，最低 ' + renderQuotaWithAmount(minTopUp)
+                    }
+                    name='redemptionCount'
+                    type={'number'}
+                    value={topUpCount}
+                    onChange={async (value) => {
+                      if (value < 1) {
+                        value = 1;
                       }
-                      name='redemptionCount'
-                      type={'number'}
-                      value={topUpCount}
-                      onChange={async (value) => {
-                        if (value < 1) {
-                          value = 1;
-                        }
-                        setTopUpCount(value);
-                        await getAmount(value);
-                      }}
+                      setTopUpCount(value);
+                      await getAmount(value);
+                    }}
                   />
                   <Space>
                     <Button
-                        type={'primary'}
-                        theme={'solid'}
-                        onClick={async () => {
-                          preTopUp('zfb');
-                        }}
+                      type={'primary'}
+                      theme={'solid'}
+                      onClick={async () => {
+                        preTopUp('zfb');
+                      }}
                     >
                       支付宝
                     </Button>
                     <Button
-                        style={{
-                          backgroundColor: 'rgba(var(--semi-green-5), 1)',
-                        }}
-                        type={'primary'}
-                        theme={'solid'}
-                        onClick={async () => {
-                          preTopUp('wx');
-                        }}
+                      style={{
+                        backgroundColor: 'rgba(var(--semi-green-5), 1)',
+                      }}
+                      type={'primary'}
+                      theme={'solid'}
+                      onClick={async () => {
+                        preTopUp('wx');
+                      }}
                     >
                       微信
                     </Button>
