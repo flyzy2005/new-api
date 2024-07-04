@@ -33,7 +33,30 @@ const Footer = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  return (
+  useEffect(() => {
+        // 创建并加载脚本
+        const script = document.createElement('script');
+        script.charset = 'UTF-8';
+        script.id = 'LA_COLLECT';
+        script.src = '//sdk.51.la/js-sdk-pro.min.js';
+        // script.async = true;
+        document.head.appendChild(script);
+
+        // 在脚本加载完成后初始化 51.la
+        script.onload = () => {
+            if (window.LA) {
+                window.LA.init({ id: '3IwNYYQ2DYFgLCyv', ck: '3IwNYYQ2DYFgLCyv' });
+            }
+        };
+
+        // 清理函数，在组件卸载时移除脚本
+        return () => {
+            document.head.removeChild(script);
+        };
+    }, []); // 空依赖数组，表示这个 effect 只会在组件挂载和卸载时执行
+
+
+    return (
     <Layout>
       <Layout.Content style={{ textAlign: 'center' }}>
         {footer ? (
