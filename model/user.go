@@ -302,7 +302,7 @@ func (user *User) ValidateAndFill() (err error) {
 	DB.Where("username = ? OR email = ?", user.Username, user.Username).First(user)
 	okay := common.ValidatePasswordAndHash(password, user.Password)
 	if !okay || user.Status != common.UserStatusEnabled {
-		return errors.New("用户名或密码错误，请使用用户名登录（不是邮箱），如果忘记用户名，请联系客服")
+		return errors.New("用户名或密码错误，请尝试重置密码。如果还有问题，请联系客服（QQ：201013801）")
 	}
 	return nil
 }
