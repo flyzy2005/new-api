@@ -72,6 +72,19 @@ func RequestOpenAI2ClaudeMessage(textRequest dto.GeneralOpenAIRequest) (*ClaudeR
 	if claudeRequest.MaxTokens == 0 {
 		claudeRequest.MaxTokens = 4096
 	}
+	if textRequest.Stop != nil {
+		// stop maybe string/array string, convert to array string
+		switch textRequest.Stop.(type) {
+		case string:
+			claudeRequest.StopSequences = []string{textRequest.Stop.(string)}
+		case []interface{}:
+			stopSequences := make([]string, 0)
+			for _, stop := range textRequest.Stop.([]interface{}) {
+				stopSequences = append(stopSequences, stop.(string))
+			}
+			claudeRequest.StopSequences = stopSequences
+		}
+	}
 	formatMessages := make([]dto.Message, 0)
 	var lastMessage *dto.Message
 	for i, message := range textRequest.Messages {
@@ -330,22 +343,15 @@ func claudeStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 			response.Created = createdTime
 			response.Model = info.UpstreamModelName
 
-			jsonStr, err := json.Marshal(response)
+			err = service.ObjectData(c, response)
 			if err != nil {
-				common.SysError("error marshalling stream response: " + err.Error())
-				return true
+				common.SysError(err.Error())
 			}
-			c.Render(-1, common.CustomEvent{Data: "data: " + string(jsonStr)})
 			return true
 		case <-stopChan:
-			c.Render(-1, common.CustomEvent{Data: "data: [DONE]"})
 			return false
 		}
 	})
-	err := resp.Body.Close()
-	if err != nil {
-		return service.OpenAIErrorWrapper(err, "close_response_body_failed", http.StatusInternalServerError), nil
-	}
 	if requestMode == RequestModeCompletion {
 		usage, _ = service.ResponseText2Usage(responseText, info.UpstreamModelName, info.PromptTokens)
 	} else {
@@ -355,6 +361,18 @@ func claudeStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 		if usage.CompletionTokens == 0 {
 			usage, _ = service.ResponseText2Usage(responseText, info.UpstreamModelName, usage.PromptTokens)
 		}
+	}
+	if info.ShouldIncludeUsage {
+		response := service.GenerateFinalUsageResponse(responseId, createdTime, info.UpstreamModelName, *usage)
+		err := service.ObjectData(c, response)
+		if err != nil {
+			common.SysError("send final response failed: " + err.Error())
+		}
+	}
+	service.Done(c)
+	err := resp.Body.Close()
+	if err != nil {
+		return service.OpenAIErrorWrapperLocal(err, "close_response_body_failed", http.StatusInternalServerError), nil
 	}
 	return nil, usage
 }
