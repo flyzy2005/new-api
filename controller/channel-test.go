@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bytedance/gopkg/util/gopool"
 	"io"
 	"math"
 	"net/http"
@@ -85,7 +86,7 @@ func testChannel(channel *model.Channel, testModel string) (err error, openAIErr
 	meta.UpstreamModelName = testModel
 	common.SysLog(fmt.Sprintf("testing channel %d with model %s", channel.Id, testModel))
 
-	adaptor.Init(meta, *request)
+	adaptor.Init(meta)
 
 	convertedRequest, err := adaptor.ConvertRequest(c, meta, request)
 	if err != nil {
@@ -102,7 +103,7 @@ func testChannel(channel *model.Channel, testModel string) (err error, openAIErr
 		return err, nil
 	}
 	if resp != nil && resp.StatusCode != http.StatusOK {
-		err := relaycommon.RelayErrorHandler(resp)
+		err := service.RelayErrorHandler(resp)
 		return fmt.Errorf("status code %d: %s", resp.StatusCode, err.Error.Message), err
 	}
 	usage, respErr := adaptor.DoResponse(c, resp, meta)
@@ -217,7 +218,7 @@ func testAllChannels(notify bool) error {
 	if disableThreshold == 0 {
 		disableThreshold = 10000000 // a impossible value
 	}
-	go func() {
+	gopool.Go(func() {
 		for _, channel := range channels {
 			isChannelEnabled := channel.Status == common.ChannelStatusEnabled
 			tik := time.Now()
@@ -265,7 +266,7 @@ func testAllChannels(notify bool) error {
 				common.SysError(fmt.Sprintf("failed to send email: %s", err.Error()))
 			}
 		}
-	}()
+	})
 	return nil
 }
 
