@@ -16,12 +16,13 @@ import (
 	relayconstant "one-api/relay/constant"
 	"one-api/service"
 	"strings"
+	"sync"
 	"time"
 )
 
 func OaiStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (*dto.OpenAIErrorWithStatusCode, *dto.Usage) {
 	containStreamUsage := false
-	responseId := ""
+	var responseId string
 	var createAt int64 = 0
 	var systemFingerprint string
 	model := info.UpstreamModelName
@@ -41,7 +42,10 @@ func OaiStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.Rel
 
 	stopChan := make(chan bool)
 	defer close(stopChan)
-
+	var (
+		lastStreamData string
+		mu             sync.Mutex
+	)
 	gopool.Go(func() {
 		for scanner.Scan() {
 			info.SetFirstResponseTime()
@@ -53,14 +57,19 @@ func OaiStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.Rel
 			if data[:6] != "data: " && data[:6] != "[DONE]" {
 				continue
 			}
+			mu.Lock()
 			data = data[6:]
 			if !strings.HasPrefix(data, "[DONE]") {
-				err := service.StringData(c, data)
-				if err != nil {
-					common.LogError(c, "streaming error: "+err.Error())
+				if lastStreamData != "" {
+					err := service.StringData(c, lastStreamData)
+					if err != nil {
+						common.LogError(c, "streaming error: "+err.Error())
+					}
 				}
+				lastStreamData = data
 				streamItems = append(streamItems, data)
 			}
+			mu.Unlock()
 		}
 		common.SafeSendBool(stopChan, true)
 	})
@@ -71,6 +80,26 @@ func OaiStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.Rel
 		common.LogError(c, "streaming timeout")
 	case <-stopChan:
 		// 正常结束
+	}
+
+	shouldSendLastResp := true
+	var lastStreamResponse dto.ChatCompletionsStreamResponse
+	err := json.Unmarshal(common.StringToByteSlice(lastStreamData), &lastStreamResponse)
+	if err == nil {
+		responseId = lastStreamResponse.Id
+		createAt = lastStreamResponse.Created
+		systemFingerprint = lastStreamResponse.GetSystemFingerprint()
+		model = lastStreamResponse.Model
+		if service.ValidUsage(lastStreamResponse.Usage) {
+			containStreamUsage = true
+			usage = lastStreamResponse.Usage
+			if !info.ShouldIncludeUsage {
+				shouldSendLastResp = false
+			}
+		}
+	}
+	if shouldSendLastResp {
+		service.StringData(c, lastStreamData)
 	}
 
 	// 计算token
@@ -86,14 +115,9 @@ func OaiStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.Rel
 				var streamResponse dto.ChatCompletionsStreamResponse
 				err := json.Unmarshal(common.StringToByteSlice(item), &streamResponse)
 				if err == nil {
-					responseId = streamResponse.Id
-					createAt = streamResponse.Created
-					systemFingerprint = streamResponse.GetSystemFingerprint()
-					model = streamResponse.Model
-					if service.ValidUsage(streamResponse.Usage) {
-						usage = streamResponse.Usage
-						containStreamUsage = true
-					}
+					//if service.ValidUsage(streamResponse.Usage) {
+					//	usage = streamResponse.Usage
+					//}
 					for _, choice := range streamResponse.Choices {
 						responseTextBuilder.WriteString(choice.Delta.GetContentString())
 						if choice.Delta.ToolCalls != nil {
@@ -110,14 +134,10 @@ func OaiStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.Rel
 			}
 		} else {
 			for _, streamResponse := range streamResponses {
-				responseId = streamResponse.Id
-				createAt = streamResponse.Created
-				systemFingerprint = streamResponse.GetSystemFingerprint()
-				model = streamResponse.Model
-				if service.ValidUsage(streamResponse.Usage) {
-					usage = streamResponse.Usage
-					containStreamUsage = true
-				}
+				//if service.ValidUsage(streamResponse.Usage) {
+				//	usage = streamResponse.Usage
+				//	containStreamUsage = true
+				//}
 				for _, choice := range streamResponse.Choices {
 					responseTextBuilder.WriteString(choice.Delta.GetContentString())
 					if choice.Delta.ToolCalls != nil {

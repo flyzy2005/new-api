@@ -83,13 +83,28 @@ func CovertGemini2OpenAI(textRequest dto.GeneralOpenAIRequest) *GeminiChatReques
 				if imageNum > GeminiVisionMaxImageNum {
 					continue
 				}
-				mimeType, data, _ := service.GetImageFromUrl(part.ImageUrl.(dto.MessageImageUrl).Url)
-				parts = append(parts, GeminiPart{
-					InlineData: &GeminiInlineData{
-						MimeType: mimeType,
-						Data:     data,
-					},
-				})
+				// 判断是否是url
+				if strings.HasPrefix(part.ImageUrl.(dto.MessageImageUrl).Url, "http") {
+					// 是url，获取图片的类型和base64编码的数据
+					mimeType, data, _ := service.GetImageFromUrl(part.ImageUrl.(dto.MessageImageUrl).Url)
+					parts = append(parts, GeminiPart{
+						InlineData: &GeminiInlineData{
+							MimeType: mimeType,
+							Data:     data,
+						},
+					})
+				} else {
+					_, format, base64String, err := service.DecodeBase64ImageData(part.ImageUrl.(dto.MessageImageUrl).Url)
+					if err != nil {
+						continue
+					}
+					parts = append(parts, GeminiPart{
+						InlineData: &GeminiInlineData{
+							MimeType: "image/" + format,
+							Data:     base64String,
+						},
+					})
+				}
 			}
 		}
 		content.Parts = parts
@@ -198,7 +213,6 @@ func streamResponseGeminiChat2OpenAI(geminiResponse *GeminiChatResponse) *dto.Ch
 			choice.Delta.SetContentString(respFirst.Text)
 		}
 	}
-	choice.FinishReason = &relaycommon.StopFinishReason
 	var response dto.ChatCompletionsStreamResponse
 	response.Object = "chat.completion.chunk"
 	response.Model = "gemini"
@@ -247,10 +261,14 @@ func geminiChatStreamHandler(c *gin.Context, resp *http.Response, info *relaycom
 			common.LogError(c, err.Error())
 		}
 	}
+
+	response := service.GenerateStopResponse(id, createAt, info.UpstreamModelName, relaycommon.StopFinishReason)
+	service.ObjectData(c, response)
+
 	usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 
 	if info.ShouldIncludeUsage {
-		response := service.GenerateFinalUsageResponse(id, createAt, info.UpstreamModelName, *usage)
+		response = service.GenerateFinalUsageResponse(id, createAt, info.UpstreamModelName, *usage)
 		err := service.ObjectData(c, response)
 		if err != nil {
 			common.SysError("send final response failed: " + err.Error())
