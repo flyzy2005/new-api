@@ -60,12 +60,10 @@ const Footer = () => {
     <Layout>
       <Layout.Content style={{ textAlign: 'center' }}>
         {footer ? (
-          <Tooltip content={defaultFooter}>
-            <div
-              className='custom-footer'
-              dangerouslySetInnerHTML={{ __html: footer }}
-            ></div>
-          </Tooltip>
+          <div
+            className='custom-footer'
+            dangerouslySetInnerHTML={{ __html: footer }}
+          ></div>
         ) : (
           defaultFooter
         )}
