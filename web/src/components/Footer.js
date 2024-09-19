@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { getFooterHTML, getSystemName } from '../helpers';
 import { Layout, Tooltip } from '@douyinfe/semi-ui';
 
-const Footer = () => {
+const FooterBar = () => {
   const systemName = getSystemName();
   const [footer, setFooter] = useState(getFooterHTML());
   let remainCheckTimes = 5;
@@ -55,21 +55,18 @@ const Footer = () => {
         };
     }, []); // 空依赖数组，表示这个 effect 只会在组件挂载和卸载时执行
 
-
-    return (
-    <Layout>
-      <Layout.Content style={{ textAlign: 'center' }}>
-        {footer ? (
-          <div
-            className='custom-footer'
-            dangerouslySetInnerHTML={{ __html: footer }}
-          ></div>
-        ) : (
-          defaultFooter
-        )}
-      </Layout.Content>
-    </Layout>
+  return (
+    <div style={{ textAlign: 'center' }}>
+      {footer ? (
+        <div
+          className='custom-footer'
+          dangerouslySetInnerHTML={{ __html: footer }}
+        ></div>
+      ) : (
+        defaultFooter
+      )}
+    </div>
   );
 };
 
-export default Footer;
+export default FooterBar;
