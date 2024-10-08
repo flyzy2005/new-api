@@ -168,43 +168,43 @@ const ModelPricing = () => {
       },
       sorter: (a, b) => a.quota_type - b.quota_type,
     },
-    {
-      title: '可用分组',
-      dataIndex: 'enable_groups',
-      render: (text, record, index) => {
-        // enable_groups is a string array
-        return (
-          <Space>
-            {text.map((group) => {
-              if (group === selectedGroup) {
-                return (
-                  <Tag
-                    color='blue'
-                    size='large'
-                    prefixIcon={<IconVerify />}
-                  >
-                    {group}
-                  </Tag>
-                );
-              } else {
-                return (
-                  <Tag
-                    color='blue'
-                    size='large'
-                    onClick={() => {
-                      setSelectedGroup(group);
-                      showInfo('当前查看的分组为：' + group + '，倍率为：' + groupRatio[group]);
-                    }}
-                  >
-                    {group}
-                  </Tag>
-                );
-              }
-            })}
-          </Space>
-        );
-      },
-    },
+    // {
+    //   title: '可用分组',
+    //   dataIndex: 'enable_groups',
+    //   render: (text, record, index) => {
+    //     // enable_groups is a string array
+    //     return (
+    //       <Space>
+    //         {text.map((group) => {
+    //           if (group === selectedGroup) {
+    //             return (
+    //               <Tag
+    //                 color='blue'
+    //                 size='large'
+    //                 prefixIcon={<IconVerify />}
+    //               >
+    //                 {group}
+    //               </Tag>
+    //             );
+    //           } else {
+    //             return (
+    //               <Tag
+    //                 color='blue'
+    //                 size='large'
+    //                 onClick={() => {
+    //                   setSelectedGroup(group);
+    //                   showInfo('当前查看的分组为：' + group + '，倍率为：' + groupRatio[group]);
+    //                 }}
+    //               >
+    //                 {group}
+    //               </Tag>
+    //             );
+    //           }
+    //         })}
+    //       </Space>
+    //     );
+    //   },
+    // },
     {
       title: () => (
         <span style={{'display':'flex','alignItems':'center'}}>
