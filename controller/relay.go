@@ -351,6 +351,9 @@ func RelayNotFound(c *gin.Context) {
 		Param:   "",
 		Code:    "",
 	}
+	if c.Request.URL.Path == "/v1/messages" {
+		err.Message = "You need to use Claude through the OpenAI format. For an example, please refer to the tutorial at: https://bianxieai.com/lobechat-openai-claude-and-gemini-api-tutorial.html"
+	}
 	c.JSON(http.StatusNotFound, gin.H{
 		"error": err,
 	})
