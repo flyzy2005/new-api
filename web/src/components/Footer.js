@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-
+import { useTranslation } from 'react-i18next';
 import { getFooterHTML, getSystemName } from '../helpers';
 import { Layout, Tooltip } from '@douyinfe/semi-ui';
 
 const FooterBar = () => {
+  const { t } = useTranslation();
   const systemName = getSystemName();
   const [footer, setFooter] = useState(getFooterHTML());
   let remainCheckTimes = 5;

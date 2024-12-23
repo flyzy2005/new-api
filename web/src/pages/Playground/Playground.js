@@ -6,24 +6,10 @@ import { Card, Chat, Input, Layout, Select, Slider, TextArea, Typography, Button
 import { SSE } from 'sse';
 import { IconSetting } from '@douyinfe/semi-icons';
 import { StyleContext } from '../../context/Style/index.js';
-
-const defaultMessage = [
-  {
-    role: 'user',
-    id: '2',
-    createAt: 1715676751919,
-    content: "你好",
-  },
-  {
-    role: 'assistant',
-    id: '3',
-    createAt: 1715676751919,
-    content: "你好，请问有什么可以帮助您的吗？",
-  }
-];
+import { useTranslation } from 'react-i18next';
 
 const roleInfo = {
-  user:  {
+  user: {
     name: 'User',
     avatar: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/ptlz_zlp/ljhwZthlaukjlkulzlp/docs-icon.png'
   },
@@ -43,6 +29,23 @@ function getId() {
 }
 
 const Playground = () => {
+  const { t } = useTranslation();
+  
+  const defaultMessage = [
+    {
+      role: 'user',
+      id: '2',
+      createAt: 1715676751919,
+      content: t('你好'),
+    },
+    {
+      role: 'assistant',
+      id: '3',
+      createAt: 1715676751919,
+      content: t('你好，请问有什么可以帮助您的吗？'),
+    }
+  ];
+
   const [inputs, setInputs] = useState({
     model: 'gpt-4o-mini',
     group: '',
@@ -65,7 +68,7 @@ const Playground = () => {
 
   useEffect(() => {
     if (searchParams.get('expired')) {
-      showError('未登录或登录已过期，请重新登录！');
+      showError(t('未登录或登录已过期，请重新登录！'));
     }
     let status = localStorage.getItem('status');
     if (status) {
@@ -86,7 +89,7 @@ const Playground = () => {
       }));
       setModels(localModelOptions);
     } else {
-      showError(message);
+      showError(t(message));
     }
   };
 
@@ -94,36 +97,33 @@ const Playground = () => {
     let res = await API.get(`/api/user/self/groups`);
     const { success, message, data } = res.data;
     if (success) {
-      // return data is a map, key is group name, value is group description
-      // label is group description, value is group name
       let localGroupOptions = Object.keys(data).map((group) => ({
         label: data[group],
         value: group,
       }));
-      // handleInputChange('group', localGroupOptions[0].value);
 
-      if (localGroupOptions.length > 0) {
-        // set user group at first
-        if (userState.user && userState.user.group) {
-          let userGroup = userState.user.group;
-          // Find and move user's group to the front
+      if (localGroupOptions.length === 0) {
+        localGroupOptions = [{
+          label: t('用户分组'),
+          value: '',
+        }];
+      } else {
+        const localUser = JSON.parse(localStorage.getItem('user'));
+        const userGroup = (userState.user && userState.user.group) || (localUser && localUser.group);
+        
+        if (userGroup) {
           const userGroupIndex = localGroupOptions.findIndex(g => g.value === userGroup);
           if (userGroupIndex > -1) {
             const userGroupOption = localGroupOptions.splice(userGroupIndex, 1)[0];
             localGroupOptions.unshift(userGroupOption);
           }
         }
-      } else {
-        localGroupOptions = [{
-          label: '用户分组',
-          value: '',
-        }];
-        setGroups(localGroupOptions);
       }
+
       setGroups(localGroupOptions);
       handleInputChange('group', localGroupOptions[0].value);
     } else {
-      showError(message);
+      showError(t(message));
     }
   };
 
@@ -314,10 +314,10 @@ const Playground = () => {
         <Layout.Sider style={{ display: styleState.isMobile ? 'block' : 'initial' }}>
           <Card style={commonOuterStyle}>
             <div style={{ marginTop: 10 }}>
-              <Typography.Text strong>分组：</Typography.Text>
+              <Typography.Text strong>{t('分组')}：</Typography.Text>
             </div>
             <Select
-              placeholder={'请选择分组'}
+              placeholder={t('请选择分组')}
               name='group'
               required
               selection
@@ -334,10 +334,10 @@ const Playground = () => {
               }))}
             />
             <div style={{ marginTop: 10 }}>
-              <Typography.Text strong>模型：</Typography.Text>
+              <Typography.Text strong>{t('模型')}：</Typography.Text>
             </div>
             <Select
-              placeholder={'请选择模型'}
+              placeholder={t('请选择模型')}
               name='model'
               required
               selection

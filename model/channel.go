@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"one-api/common"
 	"strings"
+	"sync"
 
 	"gorm.io/gorm"
 )
@@ -34,6 +35,7 @@ type Channel struct {
 	AutoBan           *int    `json:"auto_ban" gorm:"default:1"`
 	OtherInfo         string  `json:"other_info"`
 	Tag               *string `json:"tag" gorm:"index"`
+	Setting           string  `json:"setting" gorm:"type:text"`
 }
 
 func (channel *Channel) GetModels() []string {
@@ -289,7 +291,25 @@ func (channel *Channel) Delete() error {
 	return err
 }
 
+var channelStatusLock sync.Mutex
+
 func UpdateChannelStatusById(id int, status int, reason string) {
+	if common.MemoryCacheEnabled {
+		channelStatusLock.Lock()
+		channelCache, _ := CacheGetChannel(id)
+		// 如果缓存渠道存在，且状态已是目标状态，直接返回
+		if channelCache != nil && channelCache.Status == status {
+			channelStatusLock.Unlock()
+			return
+		}
+		// 如果缓存渠道不存在(说明已经被禁用)，且要设置的状态不为启用，直接返回
+		if channelCache == nil && status != common.ChannelStatusEnabled {
+			channelStatusLock.Unlock()
+			return
+		}
+		CacheUpdateChannelStatus(id, status)
+		channelStatusLock.Unlock()
+	}
 	err := UpdateAbilityStatus(id, status == common.ChannelStatusEnabled)
 	if err != nil {
 		common.SysError("failed to update ability status: " + err.Error())
@@ -468,4 +488,24 @@ func SearchTags(keyword string, group string, model string, idSort bool) ([]*str
 	}
 
 	return tags, nil
+}
+
+func (channel *Channel) GetSetting() map[string]interface{} {
+	setting := make(map[string]interface{})
+	if channel.Setting != "" {
+		err := json.Unmarshal([]byte(channel.Setting), &setting)
+		if err != nil {
+			common.SysError("failed to unmarshal setting: " + err.Error())
+		}
+	}
+	return setting
+}
+
+func (channel *Channel) SetSetting(setting map[string]interface{}) {
+	settingBytes, err := json.Marshal(setting)
+	if err != nil {
+		common.SysError("failed to marshal setting: " + err.Error())
+		return
+	}
+	channel.Setting = string(settingBytes)
 }
