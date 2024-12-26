@@ -439,7 +439,7 @@ const EditToken = (props) => {
           <div style={{ marginTop: 10 }}>
             <Typography.Text>{t('令牌分组，默认为用户的分组')}</Typography.Text>
           </div>
-          {groups.length > 0 ?
+          {groups.length > 5 ?
             <Select
               style={{ marginTop: 8 }}
               placeholder={t('令牌分组，默认为用户的分组')}
