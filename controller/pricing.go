@@ -4,29 +4,28 @@ import (
 	"github.com/gin-gonic/gin"
 	"one-api/common"
 	"one-api/model"
+	"one-api/setting"
 )
 
 func GetPricing(c *gin.Context) {
 	pricing := model.GetPricing()
 	userId, exists := c.Get("id")
 	usableGroup := map[string]string{}
-	groupRatio := common.GroupRatio
+	groupRatio := map[string]float64{}
+	for s, f := range setting.GetGroupRatioCopy() {
+		groupRatio[s] = f
+	}
 	var group string
 	if exists {
-		user, err := model.GetChannelById(userId.(int), false)
-		if err != nil {
-			c.JSON(200, gin.H{
-				"success": false,
-				"message": err.Error(),
-			})
-			return
+		user, err := model.GetUserById(userId.(int), false)
+		if err == nil {
+			group = user.Group
 		}
-		group = user.Group
 	}
 
-	usableGroup = common.GetUserUsableGroups(group)
+	usableGroup = setting.GetUserUsableGroups(group)
 	// check groupRatio contains usableGroup
-	for group := range common.GroupRatio {
+	for group := range setting.GetGroupRatioCopy() {
 		if _, ok := usableGroup[group]; !ok {
 			delete(groupRatio, group)
 		}
