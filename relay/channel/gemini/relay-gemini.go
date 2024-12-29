@@ -192,11 +192,14 @@ func CovertGemini2OpenAI(textRequest dto.GeneralOpenAIRequest) (*GeminiChatReque
 				// 判断是否是url
 				if strings.HasPrefix(part.ImageUrl.(dto.MessageImageUrl).Url, "http") {
 					// 是url，获取图片的类型和base64编码的数据
-					mimeType, data, _ := service.GetImageFromUrl(part.ImageUrl.(dto.MessageImageUrl).Url)
+					fileData, err := service.GetFileBase64FromUrl(part.ImageUrl.(dto.MessageImageUrl).Url)
+					if err != nil {
+						return nil, fmt.Errorf("get file base64 from url failed: %s", err.Error())
+					}
 					parts = append(parts, GeminiPart{
 						InlineData: &GeminiInlineData{
-							MimeType: mimeType,
-							Data:     data,
+							MimeType: fileData.MimeType,
+							Data:     fileData.Base64Data,
 						},
 					})
 				} else {
@@ -245,12 +248,12 @@ func removeAdditionalPropertiesWithDepth(schema interface{}, depth int) interfac
 	if !ok || len(v) == 0 {
 		return schema
 	}
-
+	// 删除所有的title字段
+	delete(v, "title")
 	// 如果type不为object和array，则直接返回
 	if typeVal, exists := v["type"]; !exists || (typeVal != "object" && typeVal != "array") {
 		return schema
 	}
-	delete(v, "title")
 	switch v["type"] {
 	case "object":
 		delete(v, "additionalProperties")
@@ -296,7 +299,8 @@ func getToolCall(item *GeminiPart) *dto.ToolCall {
 		ID:   fmt.Sprintf("call_%s", common.GetUUID()),
 		Type: "function",
 		Function: dto.FunctionCall{
-			Arguments: string(argsBytes),
+			// 不好评价，得去转义一下反斜杠，Gemini 的特性好像是，Google 返回的时候本身就会转义“\”
+			Arguments: strings.ReplaceAll(string(argsBytes), "\\\\", "\\"),
 			Name:      item.FunctionCall.FunctionName,
 		},
 	}
@@ -370,7 +374,6 @@ func responseGeminiChat2OpenAI(response *GeminiChatResponse) *dto.OpenAITextResp
 				choice.Message.SetToolCalls(tool_calls)
 				is_tool_call = true
 			}
-			// 过滤掉空行
 
 			choice.Message.SetStringContent(strings.Join(texts, "\n"))
 
@@ -425,6 +428,7 @@ func streamResponseGeminiChat2OpenAI(geminiResponse *GeminiChatResponse) (*dto.C
 			if part.FunctionCall != nil {
 				isTools = true
 				if call := getToolCall(&part); call != nil {
+					call.SetIndex(len(choice.Delta.ToolCalls))
 					choice.Delta.ToolCalls = append(choice.Delta.ToolCalls, *call)
 				}
 			} else {
