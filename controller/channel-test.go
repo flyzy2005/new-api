@@ -83,6 +83,8 @@ func testChannel(channel *model.Channel, testModel string) (err error, openAIErr
 	c.Request.Header.Set("Content-Type", "application/json")
 	c.Set("channel", channel.Type)
 	c.Set("base_url", channel.GetBaseURL())
+	group, _ := model.GetUserGroup(1, false)
+	c.Set("group", group)
 
 	middleware.SetupContextForSelectedChannel(c, channel, testModel)
 
@@ -101,12 +103,11 @@ func testChannel(channel *model.Channel, testModel string) (err error, openAIErr
 	}
 
 	request := buildTestRequest(testModel)
-	info.OriginModelName = testModel
 	common.SysLog(fmt.Sprintf("testing channel %d with model %s , info %v ", channel.Id, testModel, info))
 
 	adaptor.Init(info)
 
-	convertedRequest, err := adaptor.ConvertRequest(c, info, request)
+	convertedRequest, err := adaptor.ConvertOpenAIRequest(c, info, request)
 	if err != nil {
 		return err, nil
 	}
@@ -124,7 +125,7 @@ func testChannel(channel *model.Channel, testModel string) (err error, openAIErr
 	if resp != nil {
 		httpResp = resp.(*http.Response)
 		if httpResp.StatusCode != http.StatusOK {
-			err := service.RelayErrorHandler(httpResp)
+			err := service.RelayErrorHandler(httpResp, true)
 			return fmt.Errorf("status code %d: %s", httpResp.StatusCode, err.Error.Message), err
 		}
 	}
@@ -159,8 +160,9 @@ func testChannel(channel *model.Channel, testModel string) (err error, openAIErr
 	tok := time.Now()
 	milliseconds := tok.Sub(tik).Milliseconds()
 	consumedTime := float64(milliseconds) / 1000.0
-	other := service.GenerateTextOtherInfo(c, info, priceData.ModelRatio, priceData.GroupRatio, priceData.CompletionRatio, priceData.ModelPrice)
-	model.RecordConsumeLog(c, 1, channel.Id, usage.PromptTokens, usage.CompletionTokens, testModel, "模型测试",
+	other := service.GenerateTextOtherInfo(c, info, priceData.ModelRatio, priceData.GroupRatio, priceData.CompletionRatio,
+		usage.PromptTokensDetails.CachedTokens, priceData.CacheRatio, priceData.ModelPrice)
+	model.RecordConsumeLog(c, 1, channel.Id, usage.PromptTokens, usage.CompletionTokens, info.OriginModelName, "模型测试",
 		quota, "模型测试", 0, quota, int(consumedTime), false, info.Group, other)
 	common.SysLog(fmt.Sprintf("testing channel #%d, response: \n%s", channel.Id, string(respBody)))
 	return nil, nil
@@ -173,10 +175,10 @@ func buildTestRequest(model string) *dto.GeneralOpenAIRequest {
 	}
 
 	// 先判断是否为 Embedding 模型
-	if strings.Contains(strings.ToLower(model), "embedding") ||
+	if strings.Contains(strings.ToLower(model), "embedding") || // 其他 embedding 模型
 		strings.HasPrefix(model, "m3e") || // m3e 系列模型
-		strings.Contains(model, "bge-") || // bge 系列模型
-		model == "text-embedding-v1" { // 其他 embedding 模型
+		strings.Contains(model, "bge-") {
+		testRequest.Model = model
 		// Embedding 请求
 		testRequest.Input = []string{"hello world"}
 		return testRequest
@@ -184,6 +186,8 @@ func buildTestRequest(model string) *dto.GeneralOpenAIRequest {
 	// 并非Embedding 模型
 	if strings.HasPrefix(model, "o1") || strings.HasPrefix(model, "o3") {
 		testRequest.MaxCompletionTokens = 10
+	} else if strings.Contains(model, "thinking") {
+		testRequest.MaxTokens = 50
 	} else {
 		testRequest.MaxTokens = 10
 	}

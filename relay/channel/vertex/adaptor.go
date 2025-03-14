@@ -27,6 +27,7 @@ var claudeModelMap = map[string]string{
 	"claude-3-opus-20240229":     "claude-3-opus@20240229",
 	"claude-3-haiku-20240307":    "claude-3-haiku@20240307",
 	"claude-3-5-sonnet-20240620": "claude-3-5-sonnet@20240620",
+	"claude-3-5-sonnet-20241022": "claude-3-5-sonnet-v2@20241022",
 	"claude-3-7-sonnet-20250219": "claude-3-7-sonnet@20250219",
 }
 
@@ -37,6 +38,9 @@ type Adaptor struct {
 	AccountCredentials Credentials
 }
 
+func (a *Adaptor) ConvertClaudeRequest(c *gin.Context, info *relaycommon.RelayInfo, request *dto.ClaudeRequest) (any, error) {
+	return request, nil
+}
 func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.AudioRequest) (io.Reader, error) {
 	//TODO implement me
 	return nil, errors.New("not implemented")
@@ -85,15 +89,16 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		} else {
 			suffix = "rawPredict"
 		}
+		model := info.UpstreamModelName
 		if v, ok := claudeModelMap[info.UpstreamModelName]; ok {
-			info.UpstreamModelName = v
+			model = v
 		}
 		return fmt.Sprintf(
 			"https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/publishers/anthropic/models/%s:%s",
 			region,
 			adc.ProjectID,
 			region,
-			info.UpstreamModelName,
+			model,
 			suffix,
 		), nil
 	} else if a.RequestMode == RequestModeLlama {
@@ -117,7 +122,7 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Header, info *rel
 	return nil
 }
 
-func (a *Adaptor) ConvertRequest(c *gin.Context, info *relaycommon.RelayInfo, request *dto.GeneralOpenAIRequest) (any, error) {
+func (a *Adaptor) ConvertOpenAIRequest(c *gin.Context, info *relaycommon.RelayInfo, request *dto.GeneralOpenAIRequest) (any, error) {
 	if request == nil {
 		return nil, errors.New("request is nil")
 	}
@@ -128,6 +133,7 @@ func (a *Adaptor) ConvertRequest(c *gin.Context, info *relaycommon.RelayInfo, re
 		}
 		vertexClaudeReq := copyRequest(claudeReq, anthropicVersion)
 		c.Set("request_model", claudeReq.Model)
+		info.UpstreamModelName = claudeReq.Model
 		return vertexClaudeReq, nil
 	} else if a.RequestMode == RequestModeGemini {
 		geminiRequest, err := gemini.CovertGemini2OpenAI(*request)

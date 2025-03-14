@@ -12,25 +12,45 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type ThinkingContentInfo struct {
+	IsFirstThinkingContent  bool
+	SendLastThinkingContent bool
+}
+
+const (
+	LastMessageTypeText  = "text"
+	LastMessageTypeTools = "tools"
+)
+
+type ClaudeConvertInfo struct {
+	LastMessagesType string
+	Index            int
+}
+
+const (
+	RelayFormatOpenAI = "openai"
+	RelayFormatClaude = "claude"
+)
+
 type RelayInfo struct {
-	ChannelType               int
-	ChannelId                 int
-	TokenId                   int
-	TokenKey                  string
-	UserId                    int
-	Group                     string
-	TokenUnlimited            bool
-	StartTime                 time.Time
-	FirstResponseTime         time.Time
-	IsFirstResponse           bool
-	SendLastReasoningResponse bool
-	ApiType                   int
-	IsStream                  bool
-	IsPlayground              bool
-	UsePrice                  bool
-	RelayMode                 int
-	UpstreamModelName         string
-	OriginModelName           string
+	ChannelType       int
+	ChannelId         int
+	TokenId           int
+	TokenKey          string
+	UserId            int
+	Group             string
+	TokenUnlimited    bool
+	StartTime         time.Time
+	FirstResponseTime time.Time
+	isFirstResponse   bool
+	//SendLastReasoningResponse bool
+	ApiType           int
+	IsStream          bool
+	IsPlayground      bool
+	UsePrice          bool
+	RelayMode         int
+	UpstreamModelName string
+	OriginModelName   string
 	//RecodeModelName      string
 	RequestURLPath       string
 	ApiVersion           string
@@ -53,6 +73,10 @@ type RelayInfo struct {
 	UserSetting          map[string]interface{}
 	UserEmail            string
 	UserQuota            int
+	RelayFormat          string
+	SendResponseCount    int
+	ThinkingContentInfo
+	ClaudeConvertInfo
 }
 
 // 定义支持流式选项的通道类型
@@ -76,6 +100,16 @@ func GenRelayInfoWs(c *gin.Context, ws *websocket.Conn) *RelayInfo {
 	return info
 }
 
+func GenRelayInfoClaude(c *gin.Context) *RelayInfo {
+	info := GenRelayInfo(c)
+	info.RelayFormat = RelayFormatClaude
+	info.ShouldIncludeUsage = false
+	info.ClaudeConvertInfo = ClaudeConvertInfo{
+		LastMessagesType: LastMessageTypeText,
+	}
+	return info
+}
+
 func GenRelayInfo(c *gin.Context) *RelayInfo {
 	channelType := c.GetInt("channel_type")
 	channelId := c.GetInt("channel_id")
@@ -95,7 +129,7 @@ func GenRelayInfo(c *gin.Context) *RelayInfo {
 		UserQuota:         c.GetInt(constant.ContextKeyUserQuota),
 		UserSetting:       c.GetStringMap(constant.ContextKeyUserSetting),
 		UserEmail:         c.GetString(constant.ContextKeyUserEmail),
-		IsFirstResponse:   true,
+		isFirstResponse:   true,
 		RelayMode:         relayconstant.Path2RelayMode(c.Request.URL.Path),
 		BaseUrl:           c.GetString("base_url"),
 		RequestURLPath:    c.Request.URL.String(),
@@ -117,6 +151,11 @@ func GenRelayInfo(c *gin.Context) *RelayInfo {
 		ApiKey:         strings.TrimPrefix(c.Request.Header.Get("Authorization"), "Bearer "),
 		Organization:   c.GetString("channel_organization"),
 		ChannelSetting: channelSetting,
+		RelayFormat:    RelayFormatOpenAI,
+		ThinkingContentInfo: ThinkingContentInfo{
+			IsFirstThinkingContent:  true,
+			SendLastThinkingContent: false,
+		},
 	}
 	if strings.HasPrefix(c.Request.URL.Path, "/pg") {
 		info.IsPlayground = true
@@ -147,9 +186,9 @@ func (info *RelayInfo) SetIsStream(isStream bool) {
 }
 
 func (info *RelayInfo) SetFirstResponseTime() {
-	if info.IsFirstResponse {
+	if info.isFirstResponse {
 		info.FirstResponseTime = time.Now()
-		info.IsFirstResponse = false
+		info.isFirstResponse = false
 	}
 }
 
