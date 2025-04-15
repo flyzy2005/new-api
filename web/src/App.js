@@ -25,6 +25,8 @@ import Task from "./pages/Task/index.js";
 import Playground from './pages/Playground/Playground.js';
 import OAuth2Callback from "./components/OAuth2Callback.js";
 import PersonalSetting from './components/PersonalSetting.js';
+import Setup from './pages/Setup/index.js';
+import SetupCheck from './components/SetupCheck';
 
 const Home = lazy(() => import('./pages/Home'));
 const Detail = lazy(() => import('./pages/Detail'));
@@ -34,13 +36,21 @@ function App() {
   const location = useLocation();
   
   return (
-    <>
+    <SetupCheck>
       <Routes>
         <Route
           path='/'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
               <Home />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/setup'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <Setup />
             </Suspense>
           }
         />
@@ -277,7 +287,7 @@ function App() {
           />
           <Route path='*' element={<NotFound />} />
         </Routes>
-      </>
+      </SetupCheck>
   );
 }
 

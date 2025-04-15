@@ -473,7 +473,7 @@ const EditChannel = (props) => {
               <div style={{ marginTop: 10 }}>
                 <Banner
                   type={'warning'}
-                  description={t('注意，模型部署名称必须和模型名称保持一致')}
+                  description={t('注意，系统请求的时模型名称中的点会被剔除，例如：gpt-4.5-preview会请求为gpt-45-preview，所以部署的模型名称需要去掉点')}
                 ></Banner>
               </div>
               <div style={{ marginTop: 10 }}>
@@ -556,13 +556,13 @@ const EditChannel = (props) => {
           {inputs.type !== 3 && inputs.type !== 8 && inputs.type !== 22 && inputs.type !== 36 && inputs.type !== 45 && (
             <>
               <div style={{ marginTop: 10 }}>
-                <Typography.Text strong>{t('代理站地址')}：</Typography.Text>
+                <Typography.Text strong>{t('API地址')}：</Typography.Text>
               </div>
               <Tooltip content={t('对于官方渠道，new-api已经内置地址，除非是第三方代理站点或者Azure的特殊接入地址，否则不需要填写')}>
                 <Input
-                  label={t('代理站地址')}
+                  label={t('API地址')}
                   name="base_url"
-                  placeholder={t('此项可选，用于通过代理站来进行 API 调用，末尾不要带/v1和/')}
+                  placeholder={t('此项可选，用于通过自定义API地址来进行 API 调用，末尾不要带/v1和/')}
                   onChange={(value) => {
                     handleInputChange('base_url', value);
                   }}
@@ -982,6 +982,23 @@ const EditChannel = (props) => {
                 {t('设置说明')}
               </Typography.Text>
             </Space>
+          </>
+          <>
+            <div style={{ marginTop: 10 }}>
+              <Typography.Text strong>
+                {t('参数覆盖')}：
+              </Typography.Text>
+            </div>
+            <TextArea
+              placeholder={t('此项可选，用于覆盖请求参数。不支持覆盖 stream 参数。为一个 JSON 字符串，例如：') + '\n{\n  "temperature": 0\n}'}
+              name="setting"
+              onChange={(value) => {
+                handleInputChange('param_override', value);
+              }}
+              autosize
+              value={inputs.param_override}
+              autoComplete="new-password"
+            />
           </>
           {inputs.type === 1 && (
             <>
