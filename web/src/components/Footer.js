@@ -59,10 +59,12 @@ const FooterBar = () => {
     }, []); // 空依赖数组，表示这个 effect 只会在组件挂载和卸载时执行
 
   return (
-    <div style={{
-      textAlign: 'center',
-      paddingBottom: '5px',
-    }}>
+    <div
+      style={{
+        textAlign: 'center',
+        paddingBottom: '5px',
+      }}
+    >
       {footer ? (
         <div
           className='custom-footer'
