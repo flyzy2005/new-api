@@ -251,6 +251,8 @@ func OpenaiHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayI
 			return service.OpenAIErrorWrapper(err, "marshal_response_body_failed", http.StatusInternalServerError), nil
 		}
 		responseBody = claudeRespStr
+		resp.ContentLength = int64(len(responseBody))
+		resp.Header.Set("Content-Length", fmt.Sprint(resp.ContentLength))
 	}
 
 	// Reset response body
