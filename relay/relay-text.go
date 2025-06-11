@@ -499,7 +499,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 				other["web_search_call_count"] = webSearchTool.CallCount
 				other["web_search_price"] = webSearchPrice
 			}
-		} else if strings.HasSuffix(modelName, "search-preview") {
+		} else if strings.Contains(modelName, "search-preview") {
 			other["web_search"] = true
 			other["web_search_call_count"] = 1
 			other["web_search_price"] = webSearchPrice
