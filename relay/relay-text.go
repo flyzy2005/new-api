@@ -90,13 +90,14 @@ func TextHelper(c *gin.Context) (openaiErr *dto.OpenAIErrorWithStatusCode) {
 
 	// get & validate textRequest 获取并验证文本请求
 	textRequest, err := getAndValidateTextRequest(c, relayInfo)
-	if textRequest.WebSearchOptions != nil {
-		c.Set("chat_completion_web_search_context_size", textRequest.WebSearchOptions.SearchContextSize)
-	}
 
 	if err != nil {
 		common.LogError(c, fmt.Sprintf("getAndValidateTextRequest failed: %s", err.Error()))
 		return service.OpenAIErrorWrapperLocal(err, "invalid_text_request", http.StatusBadRequest)
+	}
+
+	if textRequest.WebSearchOptions != nil {
+		c.Set("chat_completion_web_search_context_size", textRequest.WebSearchOptions.SearchContextSize)
 	}
 
 	if setting.ShouldCheckPromptSensitive() {
@@ -352,6 +353,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 	promptTokens := usage.PromptTokens
 	cacheTokens := usage.PromptTokensDetails.CachedTokens
 	imageTokens := usage.PromptTokensDetails.ImageTokens
+	audioTokens := usage.PromptTokensDetails.AudioTokens
 	completionTokens := usage.CompletionTokens
 	modelName := relayInfo.OriginModelName
 
@@ -360,13 +362,14 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 	cacheRatio := priceData.CacheRatio
 	imageRatio := priceData.ImageRatio
 	modelRatio := priceData.ModelRatio
-	groupRatio := priceData.GroupRatio
+	groupRatio := priceData.GroupRatioInfo.GroupRatio
 	modelPrice := priceData.ModelPrice
 
 	// Convert values to decimal for precise calculation
 	dPromptTokens := decimal.NewFromInt(int64(promptTokens))
 	dCacheTokens := decimal.NewFromInt(int64(cacheTokens))
 	dImageTokens := decimal.NewFromInt(int64(imageTokens))
+	dAudioTokens := decimal.NewFromInt(int64(audioTokens))
 	dCompletionTokens := decimal.NewFromInt(int64(completionTokens))
 	dCompletionRatio := decimal.NewFromFloat(completionRatio)
 	dCacheRatio := decimal.NewFromFloat(cacheRatio)
@@ -412,22 +415,42 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 			dFileSearchQuota = decimal.NewFromFloat(fileSearchPrice).
 				Mul(decimal.NewFromInt(int64(fileSearchTool.CallCount))).
 				Div(decimal.NewFromInt(1000)).Mul(dGroupRatio).Mul(dQuotaPerUnit)
-			extraContent += fmt.Sprintf("File Search 调用 %d 次，调用花费 $%s",
+			extraContent += fmt.Sprintf("File Search 调用 %d 次，调用花费 %s",
 				fileSearchTool.CallCount, dFileSearchQuota.String())
 		}
 	}
 
 	var quotaCalculateDecimal decimal.Decimal
-	if !priceData.UsePrice {
-		nonCachedTokens := dPromptTokens.Sub(dCacheTokens)
-		cachedTokensWithRatio := dCacheTokens.Mul(dCacheRatio)
 
-		promptQuota := nonCachedTokens.Add(cachedTokensWithRatio)
-		if imageTokens > 0 {
-			nonImageTokens := dPromptTokens.Sub(dImageTokens)
-			imageTokensWithRatio := dImageTokens.Mul(dImageRatio)
-			promptQuota = nonImageTokens.Add(imageTokensWithRatio)
+	var audioInputQuota decimal.Decimal
+	var audioInputPrice float64
+	if !priceData.UsePrice {
+		baseTokens := dPromptTokens
+		// 减去 cached tokens
+		var cachedTokensWithRatio decimal.Decimal
+		if !dCacheTokens.IsZero() {
+			baseTokens = baseTokens.Sub(dCacheTokens)
+			cachedTokensWithRatio = dCacheTokens.Mul(dCacheRatio)
 		}
+
+		// 减去 image tokens
+		var imageTokensWithRatio decimal.Decimal
+		if !dImageTokens.IsZero() {
+			baseTokens = baseTokens.Sub(dImageTokens)
+			imageTokensWithRatio = dImageTokens.Mul(dImageRatio)
+		}
+
+		// 减去 Gemini audio tokens
+		if !dAudioTokens.IsZero() {
+			audioInputPrice = operation_setting.GetGeminiInputAudioPricePerMillionTokens(modelName)
+			if audioInputPrice > 0 {
+				// 重新计算 base tokens
+				baseTokens = baseTokens.Sub(dAudioTokens)
+				audioInputQuota = decimal.NewFromFloat(audioInputPrice).Div(decimal.NewFromInt(1000000)).Mul(dAudioTokens).Mul(dGroupRatio).Mul(dQuotaPerUnit)
+				extraContent += fmt.Sprintf("Audio Input 花费 %s", audioInputQuota.String())
+			}
+		}
+		promptQuota := baseTokens.Add(cachedTokensWithRatio).Add(imageTokensWithRatio)
 
 		completionQuota := dCompletionTokens.Mul(dCompletionRatio)
 
@@ -442,6 +465,8 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 	// 添加 responses tools call 调用的配额
 	quotaCalculateDecimal = quotaCalculateDecimal.Add(dWebSearchQuota)
 	quotaCalculateDecimal = quotaCalculateDecimal.Add(dFileSearchQuota)
+	// 添加 audio input 独立计费
+	quotaCalculateDecimal = quotaCalculateDecimal.Add(audioInputQuota)
 
 	quota := int(quotaCalculateDecimal.Round(0).IntPart())
 	totalTokens := promptTokens + completionTokens
@@ -486,7 +511,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 	if extraContent != "" {
 		logContent += ", " + extraContent
 	}
-	other := service.GenerateTextOtherInfo(ctx, relayInfo, modelRatio, groupRatio, completionRatio, cacheTokens, cacheRatio, modelPrice)
+	other := service.GenerateTextOtherInfo(ctx, relayInfo, modelRatio, groupRatio, completionRatio, cacheTokens, cacheRatio, modelPrice, priceData.GroupRatioInfo.GroupSpecialRatio)
 	if imageTokens != 0 {
 		other["image"] = true
 		other["image_ratio"] = imageRatio
@@ -511,6 +536,11 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 			other["file_search_call_count"] = fileSearchTool.CallCount
 			other["file_search_price"] = fileSearchPrice
 		}
+	}
+	if !audioInputQuota.IsZero() {
+		other["audio_input_seperate_price"] = true
+		other["audio_input_token_count"] = audioTokens
+		other["audio_input_price"] = audioInputPrice
 	}
 	model.RecordConsumeLog(ctx, relayInfo.UserId, relayInfo.ChannelId, promptTokens, completionTokens, logModel,
 		tokenName, quota, logContent, relayInfo.TokenId, userQuota, int(useTimeSeconds), relayInfo.IsStream, relayInfo.Group, other)

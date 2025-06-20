@@ -3,13 +3,14 @@ import { Layout, TabPane, Tabs } from '@douyinfe/semi-ui';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import SystemSetting from '../../components/SystemSetting';
+import SystemSetting from '../../components/settings/SystemSetting.js';
 import { isRoot } from '../../helpers';
-import OtherSetting from '../../components/OtherSetting';
-import PersonalSetting from '../../components/PersonalSetting';
-import OperationSetting from '../../components/OperationSetting';
-import RateLimitSetting from '../../components/RateLimitSetting.js';
-import ModelSetting from '../../components/ModelSetting.js';
+import OtherSetting from '../../components/settings/OtherSetting';
+import OperationSetting from '../../components/settings/OperationSetting.js';
+import RateLimitSetting from '../../components/settings/RateLimitSetting.js';
+import ModelSetting from '../../components/settings/ModelSetting.js';
+import DashboardSetting from '../../components/settings/DashboardSetting.js';
+import RatioSetting from '../../components/settings/RatioSetting.js';
 
 const Setting = () => {
   const { t } = useTranslation();
@@ -23,6 +24,11 @@ const Setting = () => {
       tab: t('运营设置'),
       content: <OperationSetting />,
       itemKey: 'operation',
+    });
+    panes.push({
+      tab: t('倍率设置'),
+      content: <RatioSetting />,
+      itemKey: 'ratio',
     });
     panes.push({
       tab: t('速率限制设置'),
@@ -43,6 +49,11 @@ const Setting = () => {
       tab: t('其他设置'),
       content: <OtherSetting />,
       itemKey: 'other',
+    });
+    panes.push({
+      tab: t('仪表盘设置'),
+      content: <DashboardSetting />,
+      itemKey: 'dashboard',
     });
   }
   const onChangeTab = (key) => {
