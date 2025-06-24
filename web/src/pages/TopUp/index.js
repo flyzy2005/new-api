@@ -802,7 +802,7 @@ const TopUp = () => {
                 <Banner
                   type='warning'
                   description={t(
-                    '管理员未开启在线充值功能，请联系管理员开启或使用兑换码充值。',
+                    '管理员未开启在线充值功能，点击下方【获取兑换码】按钮购买兑换码兑换即可完成充值。',
                   )}
                   closeIcon={null}
                   className='!rounded-2xl'
