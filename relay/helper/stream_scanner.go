@@ -206,6 +206,14 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 			if !strings.HasPrefix(data, "[DONE]") {
 				info.SetFirstResponseTime()
 				
+				var jsonData map[string]interface{}
+				if err := json.Unmarshal([]byte(data), &jsonData); err == nil {
+					if choices, ok := jsonData["choices"].([]interface{}); ok && len(choices) == 0 {
+						// ❌ 空 choices，跳过
+						continue
+					}
+				}
+				
 				// 使用超时机制防止写操作阻塞
 				done := make(chan bool, 1)
 				go func() {
