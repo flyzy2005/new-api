@@ -210,12 +210,24 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 				var jsonData map[string]interface{}
 				if err := json.Unmarshal([]byte(data), &jsonData); err == nil {
 					if choices, ok := jsonData["choices"].([]interface{}); ok && len(choices) == 0 {
-						// 如果除了 choices 之外还有其他字段，比如 usage、model、id，说明是合法空包
-						if len(jsonData) == 1 {
-							continue // ✅ 真·无效空块，跳过
+						// ✅ 替换 jsonData 中的 choices 字段为伪内容，保留其他字段
+						jsonData["choices"] = []interface{}{
+							map[string]interface{}{
+								"delta": map[string]interface{}{
+									"content": "",
+								},
+							},
+						}
+
+						if patchedBytes, err := json.Marshal(jsonData); err == nil {
+							data = string(patchedBytes) // ✅ 替换原始 data
+							if common.DebugEnabled {
+								println("🛠️ Patched empty choices, kept full structure:", data)
+							}
 						}
 					}
 				}
+				
 				// 使用超时机制防止写操作阻塞
 				done := make(chan bool, 1)
 				go func() {
