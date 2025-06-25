@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"encoding/json"
 	"bufio"
 	"context"
 	"fmt"
@@ -209,11 +210,12 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 				var jsonData map[string]interface{}
 				if err := json.Unmarshal([]byte(data), &jsonData); err == nil {
 					if choices, ok := jsonData["choices"].([]interface{}); ok && len(choices) == 0 {
-						// ❌ 空 choices，跳过
-						continue
+						// 如果除了 choices 之外还有其他字段，比如 usage、model、id，说明是合法空包
+						if len(jsonData) == 1 {
+							continue // ✅ 真·无效空块，跳过
+						}
 					}
 				}
-				
 				// 使用超时机制防止写操作阻塞
 				done := make(chan bool, 1)
 				go func() {
