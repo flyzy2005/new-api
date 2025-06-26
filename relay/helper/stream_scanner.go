@@ -210,12 +210,15 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 				var jsonData map[string]interface{}
 				if err := json.Unmarshal([]byte(data), &jsonData); err == nil {
 					if choices, ok := jsonData["choices"].([]interface{}); ok && len(choices) == 0 {
-						// ✅ 替换 jsonData 中的 choices 字段为伪内容，保留其他字段
+						// 构造完整的合法空 choices 块
 						jsonData["choices"] = []interface{}{
 							map[string]interface{}{
 								"delta": map[string]interface{}{
 									"content": "",
 								},
+								"index":         0,
+								"logprobs":      nil,
+								"finish_reason": nil,
 							},
 						}
 
@@ -227,7 +230,7 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 						}
 					}
 				}
-				
+
 				// 使用超时机制防止写操作阻塞
 				done := make(chan bool, 1)
 				go func() {
