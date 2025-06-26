@@ -677,7 +677,7 @@ const EditToken = (props) => {
               <Text strong className='block mb-2'>
                 {t('令牌分组')}
               </Text>
-              {groups.length > 0 ? (
+              {groups.length > 1 ? (
                 <Select
                   placeholder={t('令牌分组，默认为用户的分组')}
                   onChange={(value) => handleInputChange('group', value)}
