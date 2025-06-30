@@ -206,30 +206,44 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 			data = strings.TrimSuffix(data, "\r")
 			if !strings.HasPrefix(data, "[DONE]") {
 				info.SetFirstResponseTime()
-				
+
 				var jsonData map[string]interface{}
 				if err := json.Unmarshal([]byte(data), &jsonData); err == nil {
-					if choices, ok := jsonData["choices"].([]interface{}); ok && len(choices) == 0 {
-						// 构造完整的合法空 choices 块
-						jsonData["choices"] = []interface{}{
-							map[string]interface{}{
-								"delta": map[string]interface{}{
-									"content": "",
+					if choices, ok := jsonData["choices"].([]interface{}); ok {
+						if len(choices) == 0 {
+							// 情况1：choices 为空，构造合法结构
+							jsonData["choices"] = []interface{}{
+								map[string]interface{}{
+									"delta": map[string]interface{}{
+										"content": "",
+									},
+									"index":         0,
+									"logprobs":      nil,
+									"finish_reason": nil,
 								},
-								"index":         0,
-								"logprobs":      nil,
-								"finish_reason": nil,
-							},
-						}
+							}
 
-						if patchedBytes, err := json.Marshal(jsonData); err == nil {
-							data = string(patchedBytes) // ✅ 替换原始 data
-							if common.DebugEnabled {
-								println("🛠️ Patched empty choices, kept full structure:", data)
+							if patchedBytes, err := json.Marshal(jsonData); err == nil {
+								data = string(patchedBytes)
+								if common.DebugEnabled {
+									println("Patched empty choices, kept full structure:", data)
+								}
+							}
+						} else {
+							// 情况2：非空 choices，检查是否含 content_filter_offsets
+							if firstChoice, ok := choices[0].(map[string]interface{}); ok {
+								if _, hasFilter := firstChoice["content_filter_offsets"]; hasFilter {
+									// 丢弃该块
+									if common.DebugEnabled {
+										println("Dropped due to content_filter_offsets:", data)
+									}
+									continue
+								}
 							}
 						}
 					}
 				}
+
 
 				// 使用超时机制防止写操作阻塞
 				done := make(chan bool, 1)
