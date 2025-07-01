@@ -450,7 +450,7 @@ func GetCompletionRatio(name string) float64 {
 func getHardcodedCompletionModelRatio(name string) (float64, bool) {
 	lowercaseName := strings.ToLower(name)
 	if lowercaseName == "gpt-4o-mini-tts" {
-		return 12, true
+		return 20, false
 	}
 	if strings.HasPrefix(name, "gpt-4") && !strings.HasSuffix(name, "-all") && !strings.HasSuffix(name, "-gizmo-*") {
 		if strings.HasPrefix(name, "gpt-4o") {
