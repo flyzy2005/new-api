@@ -206,9 +206,9 @@ func CacheGetChannel(id int) (*Channel, error) {
 	if !ok {
 		return nil, fmt.Errorf("渠道# %d，已不存在", id)
 	}
-	if c.Status != common.ChannelStatusEnabled {
-		return nil, fmt.Errorf("渠道# %d，已被禁用", id)
-	}
+	// if c.Status != common.ChannelStatusEnabled {
+	// 	return nil, fmt.Errorf("渠道# %d，已被禁用", id)
+	// }
 	return c, nil
 }
 
