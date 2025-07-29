@@ -324,7 +324,7 @@ func TestChannel(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	channel, err := model.CacheGetChannel(channelId)
+	channel, err := model.CacheGetChannelForTest(channelId)
 	if err != nil {
 		common.ApiError(c, err)
 		return
