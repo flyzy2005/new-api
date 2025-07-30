@@ -103,25 +103,55 @@ func (e *NewAPIError) SetMessage(message string) {
 }
 
 func (e *NewAPIError) ToOpenAIError() OpenAIError {
-	switch e.ErrorType {
-	case ErrorTypeOpenAIError:
-		return e.RelayError.(OpenAIError)
-	case ErrorTypeClaudeError:
-		claudeError := e.RelayError.(ClaudeError)
-		return OpenAIError{
-			Message: e.Error(),
-			Type:    claudeError.Type,
-			Param:   "",
-			Code:    e.errorCode,
-		}
-	default:
-		return OpenAIError{
-			Message: e.Error(),
-			Type:    string(e.ErrorType),
-			Param:   "",
-			Code:    e.errorCode,
-		}
-	}
+	// Early return for nil receiver to avoid further panics
+    if e == nil {
+        return OpenAIError{
+            Message: "Unknown error (nil NewAPIError)",
+            Type:    "unknown_error",
+            Param:   "",
+            Code:    "",
+        }
+    }
+
+    switch e.ErrorType {
+    case ErrorTypeOpenAIError:
+        if e.RelayError == nil {
+            // Fallback if RelayError is nil: construct a basic OpenAIError
+            return OpenAIError{
+                Message: e.Error(),
+                Type:    string(e.ErrorType),
+                Param:   "",
+                Code:    e.errorCode,
+            }
+        }
+        // Safe to assert if not nil
+        return e.RelayError.(OpenAIError)
+    case ErrorTypeClaudeError:
+        if e.RelayError == nil {
+            // Fallback if RelayError is nil: construct a basic OpenAIError
+            return OpenAIError{
+                Message: e.Error(),
+                Type:    string(e.ErrorType),
+                Param:   "",
+                Code:    e.errorCode,
+            }
+        }
+        // Safe to assert if not nil
+        claudeError := e.RelayError.(ClaudeError)
+        return OpenAIError{
+            Message: e.Error(),
+            Type:    claudeError.Type,
+            Param:   "",
+            Code:    e.errorCode,
+        }
+    default:
+        return OpenAIError{
+            Message: e.Error(),
+            Type:    string(e.ErrorType),
+            Param:   "",
+            Code:    e.errorCode,
+        }
+    }
 }
 
 func (e *NewAPIError) ToClaudeError() ClaudeError {
