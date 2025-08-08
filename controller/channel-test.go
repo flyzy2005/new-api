@@ -305,6 +305,8 @@ func buildTestRequest(model string) *dto.GeneralOpenAIRequest {
 		}
 	} else if strings.Contains(model, "gemini") {
 		testRequest.MaxTokens = 3000
+	} else if strings.Contains(model, "gpt-5") {
+		testRequest.MaxCompletionTokens = 10
 	} else {
 		testRequest.MaxTokens = 10
 	}
