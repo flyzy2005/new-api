@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"one-api/common"
@@ -226,6 +227,8 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 			return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
 		}
 		responseBody = claudeRespStr
+		resp.ContentLength = int64(len(responseBody))
+		resp.Header.Set("Content-Length", fmt.Sprint(resp.ContentLength))
 	case relaycommon.RelayFormatGemini:
 		geminiResp := service.ResponseOpenAI2Gemini(&simpleResponse, info)
 		geminiRespStr, err := common.Marshal(geminiResp)
@@ -233,6 +236,8 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 			return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
 		}
 		responseBody = geminiRespStr
+		resp.ContentLength = int64(len(responseBody))
+		resp.Header.Set("Content-Length", fmt.Sprint(resp.ContentLength))
 	}
 
 	common.IOCopyBytesGracefully(c, resp, responseBody)
@@ -250,7 +255,13 @@ func OpenaiTTSHandler(c *gin.Context, resp *http.Response, info *relaycommon.Rel
 	defer common.CloseResponseBodyGracefully(resp)
 	usage := &dto.Usage{}
 	usage.PromptTokens = info.PromptTokens
-	usage.TotalTokens = info.PromptTokens
+	if info.OriginModelName == "gpt-4o-mini-tts" {
+		multiplier := 5.0 + rand.Float64()*(6.0-5.0)
+		usage.CompletionTokens = int(float64(info.PromptTokens) * multiplier)
+		usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
+	} else {
+		usage.TotalTokens = info.PromptTokens
+	}
 	for k, v := range resp.Header {
 		c.Writer.Header().Set(k, v[0])
 	}

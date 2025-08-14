@@ -429,7 +429,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 			extraContent += fmt.Sprintf("Web Search 调用 %d 次，上下文大小 %s，调用花费 %s",
 				webSearchTool.CallCount, webSearchTool.SearchContextSize, dWebSearchQuota.String())
 		}
-	} else if strings.HasSuffix(modelName, "search-preview") {
+	} else if strings.Contains(modelName, "search-preview") {
 		// search-preview 模型不支持 response api
 		searchContextSize := ctx.GetString("chat_completion_web_search_context_size")
 		if searchContextSize == "" {
@@ -573,7 +573,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 				other["web_search_call_count"] = webSearchTool.CallCount
 				other["web_search_price"] = webSearchPrice
 			}
-		} else if strings.HasSuffix(modelName, "search-preview") {
+		} else if strings.Contains(modelName, "search-preview") {
 			other["web_search"] = true
 			other["web_search_call_count"] = 1
 			other["web_search_price"] = webSearchPrice

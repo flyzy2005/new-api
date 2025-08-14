@@ -223,6 +223,20 @@ func CacheGetChannel(id int) (*Channel, error) {
 	return c, nil
 }
 
+func CacheGetChannelForTest(id int) (*Channel, error) {
+	if !common.MemoryCacheEnabled {
+		return GetChannelById(id, true)
+	}
+	channelSyncLock.RLock()
+	defer channelSyncLock.RUnlock()
+
+	c, ok := channelsIDM[id]
+	if !ok {
+		return nil, fmt.Errorf("渠道# %d，已不存在", id)
+	}
+	return c, nil
+}
+
 func CacheGetChannelInfo(id int) (*ChannelInfo, error) {
 	if !common.MemoryCacheEnabled {
 		channel, err := GetChannelById(id, true)

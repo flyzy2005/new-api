@@ -1,0 +1,5 @@
+# 设置所有文件使用自动行尾符处理
+* text=auto
+
+# 设置Go文件使用LF
+*.go text eol=lf

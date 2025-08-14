@@ -311,6 +311,8 @@ func buildTestRequest(model string) *dto.GeneralOpenAIRequest {
 		}
 	} else if strings.Contains(model, "gemini") {
 		testRequest.MaxTokens = 3000
+	} else if strings.Contains(model, "gpt-5") {
+		testRequest.MaxCompletionTokens = 10
 	} else {
 		testRequest.MaxTokens = 10
 	}
@@ -330,7 +332,7 @@ func TestChannel(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	channel, err := model.CacheGetChannel(channelId)
+	channel, err := model.CacheGetChannelForTest(channelId)
 	if err != nil {
 		channel, err = model.GetChannelById(channelId, true)
 		if err != nil {

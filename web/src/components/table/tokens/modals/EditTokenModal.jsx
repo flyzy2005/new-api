@@ -357,7 +357,7 @@ const EditTokenModal = (props) => {
                     />
                   </Col>
                   <Col span={24}>
-                    {groups.length > 0 ? (
+                    {groups.length > 1 ? (
                       <Form.Select
                         field='group'
                         label={t('令牌分组')}
